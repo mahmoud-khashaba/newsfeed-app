@@ -25,3 +25,9 @@ source venv/bin/activate
 ```bash
 flask run
 ```
+
+5. Run the tests
+
+```bash
+pytest test_app.py
+```
