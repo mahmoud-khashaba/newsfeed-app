@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 import mysql.connector
 from mysql.connector import Error
 import logging
-from config import config
+from db.config import config
 
 def create_app():
     app = Flask(__name__)

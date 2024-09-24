@@ -6,7 +6,7 @@ from app import create_app
 from app import get_db_connection
 import time
 from mysql.connector import errors
-from config import config
+from db.config import config
 import logging
 
 # Configure logging
