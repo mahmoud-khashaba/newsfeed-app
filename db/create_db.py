@@ -1,19 +1,26 @@
 import mysql.connector
 from mysql.connector import errorcode
+from config import config
+
+# Ensure all required keys are present in the config
+required_keys = ['user', 'password', 'host', 'database']
+for key in required_keys:
+    if key not in config:
+        raise KeyError(f"Missing required config key: {key}")
 
 # Database configuration
-config = {
-    'user': 'root',
-    'password': 'password',
-    'host': '127.0.0.1',  # or 'localhost'
+db_config = {
+    'user': config['user'],
+    'password': config['password'],
+    'host': config['host'],
 }
 
 # Database name
-DB_NAME = 'newsfeed'
+DB_NAME = config['database']
 
 # Connect to MySQL server
 try:
-    cnx = mysql.connector.connect(**config)
+    cnx = mysql.connector.connect(**db_config)
     cursor = cnx.cursor()
     print("Connected to MySQL server")
 
@@ -34,3 +41,5 @@ try:
 
 except mysql.connector.Error as err:
     print(f"Error: {err}")
+except ModuleNotFoundError as err:
+    print(f"Module not found: {err}. Please ensure 'mysql-connector-python' is installed.")

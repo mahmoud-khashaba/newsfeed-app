@@ -31,7 +31,28 @@ def get_db_connection():
         return None
 
 def get_user_by_id(user_id):
-    return db_session.query(User).filter(User.id == user_id).first()
+    cnx = get_db_connection()
+    if cnx is None:
+        logging.error("Database connection failed")
+        return None
+
+    try:
+        cursor = cnx.cursor(dictionary=True)
+        query = "SELECT * FROM User WHERE id = %s"
+        cursor.execute(query, (user_id,))
+        user = cursor.fetchone()
+        cursor.close()
+        cnx.close()
+        return user
+    except mysql.connector.Error as err:
+        logging.error(f"Database error: {err}")
+        return None
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
+        return None
+    finally:
+        if cnx:
+            cnx.close()
 
 @app.route('/user/<int:user_id>', methods=['GET'])
 def get_user(user_id):
