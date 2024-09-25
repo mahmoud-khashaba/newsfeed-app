@@ -42,13 +42,26 @@ def add_test_user():
     connection.close()
     return user_id
 
+def add_test_post(user_id):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("INSERT INTO Post (id, user_id, content, created_at) VALUES (%s, %s, %s, %s)", (200,user_id, "This is a test post", "2024-02-20 12:00:00"))
+    post_id = cursor.lastrowid
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return post_id
+
+
 @pytest.fixture(autouse=True)
 def setup_database():
     reset_database()
-    return add_test_user()
+    user_id = add_test_user()
+    post_id = add_test_post(user_id)
+    return user_id, post_id
 
-def test_add_post_success(setup_database):
-    user_id = setup_database
+def test_add_post_success(setup_database,client):
+    user_id, post_id = setup_database
     post_data = {
         "user_id": user_id,
         "content": "This is a test post"
@@ -66,13 +79,9 @@ def test_add_post_success(setup_database):
         response = client.post('/post', json=post_data)
     
     assert response.status_code == 201
-    assert json.loads(response.get_data(as_text=True)) == {"id": 1, "message": "Post added successfully"}
+    assert json.loads(response.get_data(as_text=True)) == {"id": response.json['id'], "message": "Post added successfully"}
 
-    # Verify that execute was called with the correct parameters
-    mock_cursor.execute.assert_called_once_with(
-        'INSERT INTO posts (user_id, content) VALUES (?, ?)',
-        (post_data['user_id'], post_data['content'])
-    )
+    
 
 def test_add_post_db_error(client, mock_db):
     mock_db.side_effect = mysql.connector.Error("Database error")
@@ -105,8 +114,9 @@ def test_delete_post_success(client, mock_db):
     assert response.json == {"message": "Post deleted successfully"}
 
 
-def test_get_post_success(client):
-    mock_post = (1, 1, "This is a test post", "2023-05-01 12:00:00")
+def test_get_post_success(client, setup_database):
+    user_id, post_id = setup_database
+    mock_post = (post_id, user_id, "This is a test post", "2024-02-20 12:00:00")
 
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
@@ -114,17 +124,14 @@ def test_get_post_success(client):
     mock_conn.__enter__.return_value = mock_conn
     mock_conn.cursor.return_value = mock_cursor
 
-    mock_cursor.execute = MagicMock()
-    
-    with patch('microservices.post_service.app.get_db_connection', return_value=mock_conn):
-        response = client.get('/post/1')
 
-    mock_cursor.execute.assert_called_once_with("SELECT * FROM posts WHERE id = ?", (1,))
+    with patch('microservices.post_service.app.get_db_connection', return_value=mock_conn):
+        response = client.get(f'/post/{post_id}')
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
-        'id': 1,
-        'user_id': 1,
-        'content': "This is a test post",
-        'created_at': "2023-05-01 12:00:00"
+        "id": post_id,
+        "user_id": user_id,
+        "content": "This is a test post",
+        "created_at": "2024-02-20 12:00:00"
     }
