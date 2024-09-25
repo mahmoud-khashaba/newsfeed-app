@@ -41,7 +41,7 @@ def main():
         return
 
     try:
-        execute_script_from_file('schema.sql', connection)
+        execute_script_from_file('./db/schema.sql', connection)
         print("Schema migrated successfully")
     except Exception as e:
         print(f"An error occurred: {e}")

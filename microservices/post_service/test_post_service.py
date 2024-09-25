@@ -22,57 +22,35 @@ def mock_db(mocker):
     return mock_cursor
 
 def reset_database():
-    max_retries = 5
-    retry_delay = 2  
-
-    for attempt in range(max_retries):
-        try:
-            logging.debug("Attempting to reset database, attempt %d", attempt + 1)
-            connection = get_db_connection()
-            if connection is None:
-                logging.error("Database connection failed")
-                return
-
-            cursor = connection.cursor()
-            cursor.execute("DELETE FROM Post")
-            connection.commit()
-            cursor.close()
-            connection.close()
-            logging.debug("Database reset successfully")
-            break  # Exit the loop if the query is successful
-        except errors.DatabaseError as err:
-            logging.error("Database error: %s", err)
-            if err.errno == 1205:  # Lock wait timeout exceeded
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay)
-                else:
-                    raise
-            else:
-                raise
-def add_test_user():
     connection = get_db_connection()
-    if connection is None:
-        print("Database connection failed")
-        return
-
     cursor = connection.cursor()
-    cursor.execute("INSERT INTO User (id, username, email, password) VALUES (1, 'testuser', 'testuser@example.com', 'password')")
-    cursor.execute("INSERT INTO User (id, username, email, password) VALUES (2, 'testuser2', 'testuser2@example.com', 'password')")
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 0")
+    cursor.execute("TRUNCATE TABLE User")
+    cursor.execute("TRUNCATE TABLE Post")
+    cursor.execute("SET FOREIGN_KEY_CHECKS = 1")
     connection.commit()
     cursor.close()
     connection.close()
 
-
+def add_test_user():
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    cursor.execute("INSERT INTO User (username, email, password) VALUES ('testuser', 'testuser@example.com', 'password')")
+    user_id = cursor.lastrowid
+    connection.commit()
+    cursor.close()
+    connection.close()
+    return user_id
 
 @pytest.fixture(autouse=True)
 def setup_database():
     reset_database()
-    add_test_user()
-    yield
+    return add_test_user()
 
-def test_add_post_success(client):
+def test_add_post_success(setup_database):
+    user_id = setup_database
     post_data = {
-        "user_id": 1,
+        "user_id": user_id,
         "content": "This is a test post"
     }
 
@@ -87,9 +65,6 @@ def test_add_post_success(client):
     with patch('microservices.post_service.app.get_db_connection', return_value=mock_conn):
         response = client.post('/post', json=post_data)
     
-    print(f"Response status: {response.status_code}")
-    print(f"Response data: {response.get_data(as_text=True)}")
-
     assert response.status_code == 201
     assert json.loads(response.get_data(as_text=True)) == {"id": 1, "message": "Post added successfully"}
 
@@ -133,28 +108,19 @@ def test_delete_post_success(client, mock_db):
 def test_get_post_success(client):
     mock_post = (1, 1, "This is a test post", "2023-05-01 12:00:00")
 
-    # Create a mock connection and cursor
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_cursor.fetchone.return_value = mock_post
     mock_conn.__enter__.return_value = mock_conn
     mock_conn.cursor.return_value = mock_cursor
 
-    # Mock the execute method with the expected query
     mock_cursor.execute = MagicMock()
-
-    # Patch the get_db_connection function
+    
     with patch('microservices.post_service.app.get_db_connection', return_value=mock_conn):
         response = client.get('/post/1')
-        print(f"Response status: {response.status_code}")
-        print(f"Response data: {response.get_data(as_text=True)}")
 
-    # Check if the correct query was executed
-    print(f"Execute called: {mock_cursor.execute.call_count} times")
-    print(f"Execute call args: {mock_cursor.execute.call_args}")
     mock_cursor.execute.assert_called_once_with("SELECT * FROM posts WHERE id = ?", (1,))
 
-    # Assert the response
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'id': 1,

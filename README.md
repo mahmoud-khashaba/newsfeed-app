@@ -48,6 +48,6 @@ flask run
 
 ```bash
 pytest microservices/user_service/test_user_service.py
-pytest microservices/post_service/test_post_service.py
 pytest microservices/api_gateway/test_api_gateway.py
+pytest microservices/post_service/test_post_service.py
 ```
