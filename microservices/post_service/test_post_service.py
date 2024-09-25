@@ -3,6 +3,9 @@ from app import app, get_db_connection
 import json
 import mysql.connector
 from unittest.mock import patch, MagicMock
+import logging
+import time
+from mysql.connector import errors
 
 @pytest.fixture
 def client():
@@ -17,6 +20,55 @@ def mock_db(mocker):
     mock_connection.cursor.return_value = mock_cursor
     mocker.patch('app.get_db_connection', return_value=mock_connection)
     return mock_cursor
+
+def reset_database():
+    max_retries = 5
+    retry_delay = 2  
+
+    for attempt in range(max_retries):
+        try:
+            logging.debug("Attempting to reset database, attempt %d", attempt + 1)
+            connection = get_db_connection()
+            if connection is None:
+                logging.error("Database connection failed")
+                return
+
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM Post")
+            connection.commit()
+            cursor.close()
+            connection.close()
+            logging.debug("Database reset successfully")
+            break  # Exit the loop if the query is successful
+        except errors.DatabaseError as err:
+            logging.error("Database error: %s", err)
+            if err.errno == 1205:  # Lock wait timeout exceeded
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                else:
+                    raise
+            else:
+                raise
+def add_test_user():
+    connection = get_db_connection()
+    if connection is None:
+        print("Database connection failed")
+        return
+
+    cursor = connection.cursor()
+    cursor.execute("INSERT INTO User (id, username, email, password) VALUES (1, 'testuser', 'testuser@example.com', 'password')")
+    cursor.execute("INSERT INTO User (id, username, email, password) VALUES (2, 'testuser2', 'testuser2@example.com', 'password')")
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    reset_database()
+    add_test_user()
+    yield
 
 def test_add_post_success(client):
     post_data = {

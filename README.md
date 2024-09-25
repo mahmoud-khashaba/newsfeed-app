@@ -47,25 +47,7 @@ flask run
 7. Run the tests
 
 ```bash
-pytest test_app.py
+pytest microservices/user_service/test_user_service.py
+pytest microservices/post_service/test_post_service.py
+pytest microservices/api_gateway/test_api_gateway.py
 ```
-
-## API Documentation
-
-| Endpoint       | Methods | Rule                    |
-| -------------- | ------- | ----------------------- |
-| add_comment    | POST    | /comment                |
-| add_follow     | POST    | /follow                 |
-| add_like       | POST    | /like                   |
-| add_message    | POST    | /message                |
-| add_post       | POST    | /post                   |
-| add_post_tag   | POST    | /posttag                |
-| add_profile    | POST    | /profile                |
-| add_share      | POST    | /share                  |
-| add_tag        | POST    | /tag                    |
-| add_user       | POST    | /user                   |
-| delete_post    | DELETE  | /post/<int:post_id>     |
-| get_post_by_id | GET     | /post/<int:id>          |
-| get_user       | GET     | /user/<int:user_id>     |
-| static         | GET     | /static/<path:filename> |
-| update_post    | PUT     | /post/<int:post_id>     |

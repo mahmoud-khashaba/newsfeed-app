@@ -57,7 +57,7 @@ def add_post():
         cnx.close()
         
         logger.info(f"Post added successfully with id: {post_id}")
-        return jsonify({'message': 'Post added successfully', 'post_id': post_id}), 201
+        return jsonify({"id": post_id, 'message': 'Post added successfully'}), 201
     except Exception as e:
         logger.error(f"Unexpected error: {e}")
         return jsonify({'error': 'Internal Server Error'}), 500
